@@ -1,2 +1,5 @@
-# http-storm
+# HTTP Storm
+
 HTTP load testing tool.
+
+## WIP

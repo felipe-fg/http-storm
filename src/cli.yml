@@ -1,0 +1,60 @@
+name: http-storm
+version: "0.1.0"
+about: HTTP load testing tool.
+args:
+  - method:
+      value_name: METHOD
+      possible_values: ["GET", "POST", "PUT", "DELETE"]
+      help: Request method.
+      required: true
+  - url:
+      value_name: URL
+      help: Request URL.
+      required: true
+  - data:
+      value_name: DATA
+      help: Request data.
+  - header:
+      short: h
+      long: header
+      value_names: ["NAME", "VALUE"]
+      help: Request header.
+      multiple: true
+      takes_value: true
+  - json:
+      short: j
+      long: json
+      help: Request data as application/json.
+      conflicts_with: form
+  - form:
+      short: f
+      long: form
+      help: Request data as application/x-www-form-urlencoded.
+      conflicts_with: json
+
+  - concurrency:
+      short: c
+      long: concurrency
+      value_name: REQUESTS
+      help: Number of concurrent requests.
+      default_value: "32"
+      takes_value: true
+  - rate:
+      short: r
+      long: rate
+      value_name: REQUESTS
+      help: Number of requests per second.
+      takes_value: true
+  - total:
+      short: t
+      long: total
+      value_name: REQUESTS
+      help: Number of total requests.
+      default_value: "256"
+      takes_value: true
+  - duration:
+      short: d
+      long: duration
+      value_name: SECONDS
+      help: Duration in seconds.
+      takes_value: true
