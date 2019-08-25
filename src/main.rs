@@ -1,7 +1,9 @@
 use clap::{load_yaml, App, AppSettings};
 use settings::Settings;
 
+mod request;
 mod settings;
+mod storm;
 
 fn main() {
     let cli = load_yaml!("cli.yml");
@@ -12,5 +14,5 @@ fn main() {
 
     let settings = Settings::from_matches(matches);
 
-    println!("{:?}", settings);
+    storm::run(settings);
 }

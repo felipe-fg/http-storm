@@ -1,16 +1,16 @@
 use clap::{value_t, values_t, ArgMatches};
-use http::header::{HeaderMap, HeaderName};
-use http::header::{ACCEPT, ACCEPT_ENCODING, CONTENT_TYPE, HOST, USER_AGENT};
-use http::{Method, Uri};
+use reqwest::header::{HeaderMap, HeaderName};
+use reqwest::header::{ACCEPT, ACCEPT_ENCODING, CONTENT_TYPE, HOST, USER_AGENT};
+use reqwest::{Method, Url};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Settings {
     pub method: Method,
-    pub url: Uri,
+    pub url: Url,
     pub data: Option<String>,
     pub headers: HeaderMap,
 
-    pub concurrency: u32,
+    pub concurrency: usize,
     pub rate: Option<u32>,
     pub total: Option<u32>,
     pub duration: Option<u32>,
@@ -19,11 +19,11 @@ pub struct Settings {
 impl Settings {
     pub fn from_matches(matches: ArgMatches) -> Settings {
         let method = value_t!(matches, "method", Method).expect("method");
-        let url = value_t!(matches, "url", Uri).expect("url");
+        let url = value_t!(matches, "url", Url).expect("url");
         let data = value_t!(matches, "data", String).ok();
         let headers = Settings::from_matches_headers(&matches, &url);
 
-        let concurrency = value_t!(matches, "concurrency", u32).expect("concurrency");
+        let concurrency = value_t!(matches, "concurrency", usize).expect("concurrency");
         let rate = value_t!(matches, "rate", u32).ok();
         let total = value_t!(matches, "total", u32).ok();
         let duration = value_t!(matches, "duration", u32).ok();
@@ -41,14 +41,16 @@ impl Settings {
         }
     }
 
-    fn from_matches_headers(matches: &ArgMatches, url: &Uri) -> HeaderMap {
+    fn from_matches_headers(matches: &ArgMatches, url: &Url) -> HeaderMap {
+        let host = url.host().expect("host");
+
         let mut headers = HeaderMap::new();
 
         // Default headers
         headers.insert(ACCEPT, "*/*".parse().expect("header"));
         headers.insert(ACCEPT_ENCODING, "gzip, deflate".parse().expect("header"));
         headers.insert(USER_AGENT, "http-storm/0.1.0".parse().expect("header"));
-        headers.insert(HOST, url.host().expect("host").parse().expect("header"));
+        headers.insert(HOST, host.to_string().parse().expect("host"));
 
         Settings::from_matches_headers_json(matches, &mut headers);
         Settings::from_matches_headers_form(matches, &mut headers);
