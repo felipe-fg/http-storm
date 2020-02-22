@@ -1,9 +1,12 @@
 use clap::{load_yaml, App, AppSettings};
+use metric::Metric;
 use settings::Settings;
+use tokio::sync::mpsc;
 
 mod metric;
 mod settings;
 mod storm;
+mod ui;
 
 #[tokio::main]
 async fn main() {
@@ -15,5 +18,9 @@ async fn main() {
 
     let settings = Settings::from_matches(matches);
 
-    storm::run(settings).await;
+    let (metric_sender, metric_receiver) = mpsc::unbounded_channel::<Metric>();
+
+    storm::run(&settings, metric_sender);
+
+    ui::render(&settings, metric_receiver).await;
 }

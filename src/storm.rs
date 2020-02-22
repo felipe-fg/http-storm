@@ -3,29 +3,17 @@ use super::settings::Settings;
 use chrono::{DateTime, Utc};
 use reqwest::Client;
 use std::time::Duration;
-use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::time;
 
-pub async fn run(settings: Settings) -> () {
+pub fn run(settings: &Settings, metric_sender: UnboundedSender<Metric>) -> () {
     let client = Client::new();
 
-    let mut metrics = Vec::new();
-
-    let (metric_sender, mut metric_receiver) = mpsc::unbounded_channel::<Metric>();
-
     for _ in 1..settings.concurrency {
-        spawn_worker(&client, &settings, metric_sender.clone());
+        spawn_worker(&client, settings, metric_sender.clone());
     }
 
-    spawn_worker(&client, &settings, metric_sender);
-
-    while let Some(metric) = metric_receiver.recv().await {
-        println!("{}", metric);
-
-        metrics.push(metric);
-    }
-
-    show_stats(metrics);
+    spawn_worker(&client, settings, metric_sender);
 }
 
 fn spawn_worker(client: &Client, settings: &Settings, sender: UnboundedSender<Metric>) -> () {
@@ -65,7 +53,7 @@ fn spawn_worker(client: &Client, settings: &Settings, sender: UnboundedSender<Me
 
 fn total_check(total: Option<f64>, count: u64) -> bool {
     match total {
-        Some(total) => count < total as u64,
+        Some(total) => count < total.ceil() as u64,
         None => true,
     }
 }
@@ -101,20 +89,4 @@ async fn rate_delay(rate: Option<f64>, start: DateTime<Utc>, stop: DateTime<Utc>
             time::delay_for(delay_duration).await;
         }
     }
-}
-
-fn show_stats(metrics: Vec<Metric>) -> () {
-    let total = metrics.len();
-
-    let start = metrics.iter().map(|x| x.start_time).min().expect("min");
-    let stop = metrics.iter().map(|x| x.stop_time).max().expect("max");
-    let duration = stop.signed_duration_since(start);
-
-    let slower = metrics.iter().map(|x| x.duration).max().expect("slower");
-    let fastest = metrics.iter().map(|x| x.duration).min().expect("fastest");
-
-    println!("Requests: {}", total);
-    println!("Duration: {}s", duration.num_seconds());
-    println!("Slower: {}ms", slower.num_milliseconds());
-    println!("Fastest: {}ms", fastest.num_milliseconds());
 }

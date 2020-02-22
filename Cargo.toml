@@ -8,4 +8,6 @@ chrono = "0.4"
 clap = { version = "2.33", features = ["yaml"] }
 futures = "0.3"
 reqwest = "0.10"
+termion = "1.5"
 tokio = { version = "0.2", features = ["full"] }
+tui = "0.8"
