@@ -1,11 +1,12 @@
 use clap::{load_yaml, App, AppSettings};
 use settings::Settings;
 
-mod request;
+mod metric;
 mod settings;
 mod storm;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = load_yaml!("cli.yml");
 
     let matches = App::from_yaml(cli)
@@ -14,5 +15,5 @@ fn main() {
 
     let settings = Settings::from_matches(matches);
 
-    storm::run(settings);
+    storm::run(settings).await;
 }
