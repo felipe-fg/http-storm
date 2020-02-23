@@ -4,39 +4,36 @@ use reqwest::Client;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct Metric {
+pub struct RequestMetric {
     pub start_time: DateTime<Utc>,
     pub stop_time: DateTime<Utc>,
-    pub duration: Duration,
+    pub elapsed_time: Duration,
     pub status_code: Option<String>,
-    pub request_error: Option<String>,
+    pub error_message: Option<String>,
 }
 
-impl fmt::Display for Metric {
+impl fmt::Display for RequestMetric {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let code = self
             .status_code
             .as_ref()
             .map(|x| x.to_string())
-            .unwrap_or("".to_string());
+            .unwrap_or("000".to_string());
 
-        let time = self
-            .stop_time
-            .signed_duration_since(self.start_time)
-            .num_milliseconds();
+        let time = self.elapsed_time.num_milliseconds();
 
         let error = self
-            .request_error
+            .error_message
             .as_ref()
             .map(|x| x.to_string())
             .unwrap_or("".to_string());
 
-        write!(f, "[{}] {}ms\t{}", code, time, error)
+        write!(f, "[{}] {:>3}ms\t{}", code, time, error)
     }
 }
 
-impl Metric {
-    pub async fn from_request(client: &Client, settings: &Settings) -> Metric {
+impl RequestMetric {
+    pub async fn collect_metric(client: &Client, settings: &Settings) -> RequestMetric {
         let method = settings.method.clone();
         let url = settings.url.clone();
 
@@ -45,7 +42,7 @@ impl Metric {
         let request = request.headers(settings.headers.clone());
 
         let request = match &settings.data {
-            Some(data) => request.body(data.clone()),
+            Some(data) => request.body(data.to_string()),
             None => request,
         };
 
@@ -55,24 +52,24 @@ impl Metric {
 
         let stop_time = Utc::now();
 
-        let duration = stop_time.signed_duration_since(start_time);
+        let elapsed_time = stop_time.signed_duration_since(start_time);
 
         let status_code = match &result {
             Ok(response) => Some(response.status().to_string()),
             Err(_) => None,
         };
 
-        let request_error = match &result {
+        let error_message = match &result {
             Ok(_) => None,
             Err(error) => Some(error.to_string()),
         };
 
-        Metric {
+        RequestMetric {
             start_time: start_time,
             stop_time: stop_time,
-            duration: duration,
+            elapsed_time: elapsed_time,
             status_code: status_code,
-            request_error: request_error,
+            error_message: error_message,
         }
     }
 }

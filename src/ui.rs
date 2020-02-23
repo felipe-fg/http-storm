@@ -1,5 +1,6 @@
-use super::metric::Metric;
+use super::metric::RequestMetric;
 use super::settings::Settings;
+use super::worker::WorkerMessage;
 use chrono;
 use chrono::Utc;
 use std::cmp;
@@ -15,7 +16,7 @@ use tui::style::{Color, Modifier, Style};
 use tui::widgets::{Block, Borders, Gauge, Paragraph, Sparkline, Text, Widget};
 use tui::{Frame, Terminal};
 
-pub async fn render(settings: &Settings, mut metric_receiver: UnboundedReceiver<Metric>) -> () {
+pub async fn render(settings: &Settings, mut receiver: UnboundedReceiver<WorkerMessage>) -> () {
     let mut terminal = create_terminal();
 
     let mut metrics = Vec::new();
@@ -31,8 +32,8 @@ pub async fn render(settings: &Settings, mut metric_receiver: UnboundedReceiver<
     let update_time = chrono::Duration::milliseconds(100);
     let mut previous_time = Utc::now();
 
-    while let Some(metric) = metric_receiver.recv().await {
-        metrics.push(metric);
+    while let Some(message) = receiver.recv().await {
+        metrics.push(message.metric);
 
         let current_time = Utc::now();
         let elapsed_time = current_time.signed_duration_since(previous_time);
@@ -70,7 +71,7 @@ fn create_terminal() -> Terminal<impl Backend> {
     terminal
 }
 
-fn draw(settings: &Settings, metrics: &Vec<Metric>, mut f: Frame<impl Backend>) -> () {
+fn draw(settings: &Settings, metrics: &Vec<RequestMetric>, mut f: Frame<impl Backend>) -> () {
     let size = f.size();
 
     let progress = settings
@@ -83,7 +84,7 @@ fn draw(settings: &Settings, metrics: &Vec<Metric>, mut f: Frame<impl Backend>) 
         .iter()
         .skip((cmp::max(metrics.len() as i64 - size.width as i64, 0)) as usize)
         .take(size.width as usize)
-        .map(|metric| metric.duration.num_milliseconds() as u64)
+        .map(|metric| metric.elapsed_time.num_milliseconds() as u64)
         .collect::<Vec<u64>>();
 
     let chunks = Layout::default()
@@ -92,7 +93,6 @@ fn draw(settings: &Settings, metrics: &Vec<Metric>, mut f: Frame<impl Backend>) 
         .constraints(
             [
                 Constraint::Percentage(10),
-                Constraint::Percentage(2),
                 Constraint::Percentage(5),
                 Constraint::Percentage(20),
                 Constraint::Percentage(65),
@@ -110,10 +110,10 @@ fn draw(settings: &Settings, metrics: &Vec<Metric>, mut f: Frame<impl Backend>) 
         .style(Style::default().bg(Color::DarkGray).fg(Color::Gray))
         .label("")
         .percent(progress)
-        .render(&mut f, chunks[2]);
+        .render(&mut f, chunks[1]);
 
     Sparkline::default()
         .style(Style::default().fg(Color::LightGreen))
         .data(&durations)
-        .render(&mut f, chunks[3]);
+        .render(&mut f, chunks[2]);
 }

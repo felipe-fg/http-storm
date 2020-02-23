@@ -1,12 +1,12 @@
 use clap::{load_yaml, App, AppSettings};
-use metric::Metric;
 use settings::Settings;
 use tokio::sync::mpsc;
+use worker::WorkerMessage;
 
 mod metric;
 mod settings;
-mod storm;
 mod ui;
+mod worker;
 
 #[tokio::main]
 async fn main() {
@@ -18,9 +18,9 @@ async fn main() {
 
     let settings = Settings::from_matches(matches);
 
-    let (metric_sender, metric_receiver) = mpsc::unbounded_channel::<Metric>();
+    let (message_sender, message_receiver) = mpsc::unbounded_channel::<WorkerMessage>();
 
-    storm::run(&settings, metric_sender);
+    worker::collect_metrics(&settings, message_sender);
 
-    ui::render(&settings, metric_receiver).await;
+    ui::render(&settings, message_receiver).await;
 }

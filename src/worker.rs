@@ -1,0 +1,100 @@
+use super::metric::RequestMetric;
+use super::settings::Settings;
+use chrono::{DateTime, Duration, Utc};
+use reqwest::Client;
+use std::fmt;
+use std::time;
+use tokio;
+use tokio::sync::mpsc::UnboundedSender;
+
+#[derive(Debug)]
+pub struct WorkerMessage {
+    pub id: usize,
+    pub start_time: DateTime<Utc>,
+    pub current_time: DateTime<Utc>,
+    pub elapsed_time: Duration,
+    pub metric: RequestMetric,
+}
+
+impl fmt::Display for WorkerMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Worker {:>3}: {}", self.id, self.metric)
+    }
+}
+
+pub fn collect_metrics(settings: &Settings, sender: UnboundedSender<WorkerMessage>) -> () {
+    for id in 1..settings.concurrency {
+        spawn_worker(settings.clone(), id, sender.clone());
+    }
+
+    spawn_worker(settings.clone(), settings.concurrency, sender);
+}
+
+fn spawn_worker(settings: Settings, id: usize, sender: UnboundedSender<WorkerMessage>) -> () {
+    tokio::spawn(async move {
+        let client = Client::new();
+
+        let workers = settings.concurrency as f64;
+        let worker_rate = settings.rate.map(|x| x as f64 / workers);
+        let worker_total = settings.total.map(|x| x as f64 / workers);
+        let worker_duration = settings.duration;
+
+        let start_time = Utc::now();
+
+        for count in 1u64.. {
+            let metric = RequestMetric::collect_metric(&client, &settings).await;
+            let metric_elapsed_time = metric.elapsed_time;
+
+            let current_time = Utc::now();
+            let elapsed_time = current_time.signed_duration_since(start_time);
+
+            let message = WorkerMessage {
+                id: id,
+                start_time: start_time,
+                current_time: current_time,
+                elapsed_time: elapsed_time,
+                metric: metric,
+            };
+
+            sender.send(message).expect("send message");
+
+            if !total_check(worker_total, count) {
+                break;
+            }
+
+            if !duration_check(worker_duration, elapsed_time) {
+                break;
+            }
+
+            rate_delay(worker_rate, metric_elapsed_time).await;
+        }
+    });
+}
+
+fn total_check(total: Option<f64>, count: u64) -> bool {
+    match total {
+        Some(total) => count < total.ceil() as u64,
+        None => true,
+    }
+}
+
+fn duration_check(duration: Option<u64>, elapsed_time: Duration) -> bool {
+    match duration {
+        Some(duration) => elapsed_time < Duration::seconds(duration as i64),
+        None => true,
+    }
+}
+
+async fn rate_delay(rate: Option<f64>, elapsed_time: Duration) -> () {
+    if let Some(rate) = rate {
+        let rate_time = time::Duration::from_secs(1).div_f64(rate);
+
+        let metric_time = elapsed_time.to_std().expect("metric time");
+
+        if metric_time < rate_time {
+            let delay_time = rate_time - metric_time;
+
+            tokio::time::delay_for(delay_time).await;
+        }
+    }
+}

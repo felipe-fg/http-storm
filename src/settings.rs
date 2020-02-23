@@ -11,9 +11,9 @@ pub struct Settings {
     pub headers: HeaderMap,
 
     pub concurrency: usize,
-    pub rate: Option<u32>,
-    pub total: Option<u32>,
-    pub duration: Option<u32>,
+    pub rate: Option<u64>,
+    pub total: Option<u64>,
+    pub duration: Option<u64>,
 }
 
 impl Settings {
@@ -24,9 +24,9 @@ impl Settings {
         let headers = Settings::from_matches_headers(&matches, &url);
 
         let concurrency = value_t!(matches, "concurrency", usize).expect("concurrency");
-        let rate = value_t!(matches, "rate", u32).ok();
-        let total = value_t!(matches, "total", u32).ok();
-        let duration = value_t!(matches, "duration", u32).ok();
+        let rate = value_t!(matches, "rate", u64).ok();
+        let total = value_t!(matches, "total", u64).ok();
+        let duration = value_t!(matches, "duration", u64).ok();
 
         Settings {
             method: method,
