@@ -1,66 +1,49 @@
 use super::metric::RequestMetric;
 use super::settings::Settings;
 use super::worker::WorkerMessage;
-use chrono;
-use chrono::Utc;
 use std::cmp;
-use std::io;
-use std::time::Duration;
+use std::io::{stdout, Read};
+use std::time;
+use termion::async_stdin;
 use termion::raw::IntoRawMode;
+use tokio;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time;
-use tui::backend::Backend;
-use tui::backend::TermionBackend;
+use tui::backend::{Backend, TermionBackend};
 use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::widgets::{Block, Borders, Gauge, Paragraph, Sparkline, Text, Widget};
 use tui::{Frame, Terminal};
 
 pub async fn render(settings: &Settings, mut receiver: UnboundedReceiver<WorkerMessage>) -> () {
+    let mut stdin = async_stdin().bytes();
+
     let mut terminal = create_terminal();
 
     let mut metrics = Vec::new();
 
-    // start
-    terminal
-        .draw(|frame| {
-            draw(settings, &metrics, frame);
-        })
-        .expect("terminal draw");
-
-    // update
-    let update_time = chrono::Duration::milliseconds(100);
-    let mut previous_time = Utc::now();
-
-    while let Some(message) = receiver.recv().await {
-        metrics.push(message.metric);
-
-        let current_time = Utc::now();
-        let elapsed_time = current_time.signed_duration_since(previous_time);
-
-        if elapsed_time > update_time {
-            terminal
-                .draw(|frame| {
-                    draw(settings, &metrics, frame);
-                })
-                .expect("terminal draw");
-
-            previous_time = current_time;
+    'render: loop {
+        while let Some(Ok(input)) = stdin.next() {
+            if input == b'q' {
+                break 'render;
+            }
         }
+
+        while let Ok(message) = receiver.try_recv() {
+            metrics.push(message.metric);
+        }
+
+        terminal
+            .draw(|frame| {
+                draw(settings, &metrics, frame);
+            })
+            .expect("terminal draw");
+
+        tokio::time::delay_for(time::Duration::from_millis(100)).await;
     }
-
-    // complete
-    terminal
-        .draw(|frame| {
-            draw(settings, &metrics, frame);
-        })
-        .expect("terminal draw");
-
-    time::delay_for(Duration::from_secs(60 * 60)).await;
 }
 
 fn create_terminal() -> Terminal<impl Backend> {
-    let stdout = io::stdout().into_raw_mode().expect("stdout");
+    let stdout = stdout().into_raw_mode().expect("stdout");
     let backend = TermionBackend::new(stdout);
 
     let mut terminal = Terminal::new(backend).expect("terminal create");
