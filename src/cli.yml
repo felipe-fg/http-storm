@@ -50,7 +50,7 @@ args:
       long: total
       value_name: REQUESTS
       help: Number of total requests.
-      default_value: "256"
+      default_value: "4096"
       takes_value: true
   - duration:
       short: d

@@ -8,7 +8,7 @@ mod settings;
 mod ui;
 mod worker;
 
-#[tokio::main]
+#[tokio::main(core_threads = 32, max_threads = 1024)]
 async fn main() {
     let cli = load_yaml!("cli.yml");
 
