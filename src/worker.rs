@@ -1,5 +1,5 @@
-use super::metric::RequestMetric;
-use super::settings::Settings;
+use crate::metric::RequestMetric;
+use crate::settings::Settings;
 use chrono::{DateTime, Duration, Utc};
 use reqwest::Client;
 use std::fmt;
@@ -35,8 +35,8 @@ fn spawn_worker(settings: Settings, id: usize, sender: UnboundedSender<WorkerMes
         let client = Client::new();
 
         let workers = settings.concurrency as f64;
-        let worker_rate = settings.rate.map(|x| x as f64 / workers);
-        let worker_total = settings.total.map(|x| x as f64 / workers);
+        let worker_rate = settings.rate.map(|rate| rate as f64 / workers);
+        let worker_total = settings.total.map(|total| total as f64 / workers);
         let worker_duration = settings.duration;
 
         let start_time = Utc::now();
@@ -56,7 +56,10 @@ fn spawn_worker(settings: Settings, id: usize, sender: UnboundedSender<WorkerMes
                 metric: metric,
             };
 
-            sender.send(message).expect("send message");
+            match sender.send(message) {
+                Ok(_) => (),
+                Err(_) => break,
+            };
 
             if !total_check(worker_total, count) {
                 break;

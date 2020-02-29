@@ -17,18 +17,18 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn from_matches(matches: ArgMatches) -> Settings {
+    pub fn from_matches(matches: ArgMatches) -> Self {
         let method = value_t!(matches, "method", Method).expect("method");
         let url = value_t!(matches, "url", Url).expect("url");
         let data = value_t!(matches, "data", String).ok();
-        let headers = Settings::from_matches_headers(&matches, &url);
+        let headers = Self::from_matches_headers(&matches, &url);
 
         let concurrency = value_t!(matches, "concurrency", usize).expect("concurrency");
         let rate = value_t!(matches, "rate", u64).ok();
         let total = value_t!(matches, "total", u64).ok();
         let duration = value_t!(matches, "duration", u64).ok();
 
-        Settings {
+        Self {
             method: method,
             url: url,
             data: data,
@@ -52,9 +52,9 @@ impl Settings {
         headers.insert(USER_AGENT, "http-storm/0.1.0".parse().expect("header"));
         headers.insert(HOST, host.to_string().parse().expect("host"));
 
-        Settings::from_matches_headers_json(matches, &mut headers);
-        Settings::from_matches_headers_form(matches, &mut headers);
-        Settings::from_matches_headers_custom(matches, &mut headers);
+        Self::from_matches_headers_json(matches, &mut headers);
+        Self::from_matches_headers_form(matches, &mut headers);
+        Self::from_matches_headers_custom(matches, &mut headers);
 
         headers
     }

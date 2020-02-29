@@ -1,7 +1,7 @@
+use crate::settings::Settings;
+use crate::worker::WorkerMessage;
 use clap::{load_yaml, App, AppSettings};
-use settings::Settings;
 use tokio::sync::mpsc;
-use worker::WorkerMessage;
 
 mod metric;
 mod settings;

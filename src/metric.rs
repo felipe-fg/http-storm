@@ -1,4 +1,4 @@
-use super::settings::Settings;
+use crate::settings::Settings;
 use chrono::{DateTime, Duration, Utc};
 use reqwest::Client;
 use std::fmt;
@@ -17,7 +17,7 @@ impl fmt::Display for RequestMetric {
         let code = self
             .status_code
             .as_ref()
-            .map(|x| x.to_string())
+            .map(|status_code| status_code.to_string())
             .unwrap_or("000".to_string());
 
         let time = self.elapsed_time.num_milliseconds();
@@ -25,7 +25,7 @@ impl fmt::Display for RequestMetric {
         let error = self
             .error_message
             .as_ref()
-            .map(|x| x.to_string())
+            .map(|error_message| error_message.to_string())
             .unwrap_or("".to_string());
 
         write!(f, "[{}] {:>3}ms\t{}", code, time, error)
@@ -33,7 +33,7 @@ impl fmt::Display for RequestMetric {
 }
 
 impl RequestMetric {
-    pub async fn collect_metric(client: &Client, settings: &Settings) -> RequestMetric {
+    pub async fn collect_metric(client: &Client, settings: &Settings) -> Self {
         let method = settings.method.clone();
         let url = settings.url.clone();
 
@@ -64,7 +64,7 @@ impl RequestMetric {
             Err(error) => Some(error.to_string()),
         };
 
-        RequestMetric {
+        Self {
             start_time: start_time,
             stop_time: stop_time,
             elapsed_time: elapsed_time,
