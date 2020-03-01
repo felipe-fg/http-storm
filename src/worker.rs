@@ -5,7 +5,13 @@ use reqwest::Client;
 use std::fmt;
 use std::time;
 use tokio;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{mpsc, watch};
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum WorkerCommand {
+    Run,
+    Stop,
+}
 
 #[derive(Debug)]
 pub struct WorkerMessage {
@@ -22,15 +28,24 @@ impl fmt::Display for WorkerMessage {
     }
 }
 
-pub fn collect_metrics(settings: &Settings, sender: UnboundedSender<WorkerMessage>) -> () {
+pub fn collect_metrics(
+    settings: &Settings,
+    sender: mpsc::UnboundedSender<WorkerMessage>,
+    receiver: watch::Receiver<WorkerCommand>,
+) -> () {
     for id in 1..settings.concurrency {
-        spawn_worker(settings.clone(), id, sender.clone());
+        spawn_worker(settings.clone(), id, sender.clone(), receiver.clone());
     }
 
-    spawn_worker(settings.clone(), settings.concurrency, sender);
+    spawn_worker(settings.clone(), settings.concurrency, sender, receiver);
 }
 
-fn spawn_worker(settings: Settings, id: usize, sender: UnboundedSender<WorkerMessage>) -> () {
+fn spawn_worker(
+    settings: Settings,
+    id: usize,
+    sender: mpsc::UnboundedSender<WorkerMessage>,
+    receiver: watch::Receiver<WorkerCommand>,
+) -> () {
     tokio::spawn(async move {
         let client = Client::new();
 
@@ -42,6 +57,12 @@ fn spawn_worker(settings: Settings, id: usize, sender: UnboundedSender<WorkerMes
         let start_time = Utc::now();
 
         for count in 1u64.. {
+            let command = { *receiver.borrow() };
+
+            if command == WorkerCommand::Stop {
+                break;
+            }
+
             let metric = RequestMetric::collect_metric(&client, &settings).await;
             let metric_elapsed_time = metric.elapsed_time;
 
