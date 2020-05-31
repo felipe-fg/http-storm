@@ -48,7 +48,7 @@ fn elapsed_seconds(messages: &[WorkerMessage]) -> u64 {
     let last_message = messages.iter().rev().find(|message| message.id == 1);
 
     if let Some(message) = last_message {
-        message.elapsed_time.num_seconds() as u64
+        (message.elapsed_time.num_seconds() as u64).max(1u64)
     } else {
         0
     }

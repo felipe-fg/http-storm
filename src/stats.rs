@@ -64,14 +64,18 @@ fn status(messages: &[WorkerMessage]) -> Vec<(String, u64)> {
             .status_code
             .as_ref()
             .map(|status_code| status_code.to_string())
-            .unwrap_or("000".to_string());
+            .unwrap_or("Failed".to_string());
 
         let count = map.get(&status).map(|value| *value).unwrap_or(0u64);
 
         map.insert(status, count + 1);
     }
 
-    map.into_iter().collect()
+    let mut vec: Vec<(String, u64)> = map.into_iter().collect();
+
+    vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+
+    vec
 }
 
 fn time_values(messages: &[WorkerMessage]) -> Vec<u64> {

@@ -16,6 +16,7 @@ pub enum WorkerCommand {
 #[derive(Debug)]
 pub struct WorkerMessage {
     pub id: usize,
+    pub finished: bool,
     pub start_time: DateTime<Utc>,
     pub current_time: DateTime<Utc>,
     pub elapsed_time: Duration,
@@ -69,12 +70,23 @@ fn spawn_worker(
             let current_time = Utc::now();
             let elapsed_time = current_time.signed_duration_since(start_time);
 
+            let mut finished = false;
+
+            if !total_check(worker_total, count) {
+                finished = true;
+            }
+
+            if !duration_check(worker_duration, elapsed_time) {
+                finished = true;
+            }
+
             let message = WorkerMessage {
                 id: id,
                 start_time: start_time,
                 current_time: current_time,
                 elapsed_time: elapsed_time,
                 metric: metric,
+                finished: finished,
             };
 
             match sender.send(message) {
@@ -82,11 +94,7 @@ fn spawn_worker(
                 Err(_) => break,
             };
 
-            if !total_check(worker_total, count) {
-                break;
-            }
-
-            if !duration_check(worker_duration, elapsed_time) {
+            if finished {
                 break;
             }
 

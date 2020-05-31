@@ -8,6 +8,7 @@ mod settings;
 mod stats;
 mod summary;
 mod ui;
+mod view;
 mod worker;
 
 #[tokio::main(core_threads = 32, max_threads = 1024)]
