@@ -214,6 +214,7 @@ fn draw_widget_stats(summary: &Summary, frame: &mut Frame<impl Backend>, chunk: 
             "3" => Color::Yellow,
             "4" => Color::Red,
             "5" => Color::Red,
+            "F" => Color::Red,
             _ => Color::Gray,
         };
 

@@ -90,7 +90,7 @@ fn estimator(values: &[u64]) -> Estimator {
 }
 
 fn time_histogram(values: &[u64], min: u64, max: u64) -> Vec<((u64, u64), u64)> {
-    let mut histogram = hist::Histogram::with_const_width(min as f64 - 1f64, max as f64 + 1f64);
+    let mut histogram = hist::Histogram::with_const_width(min as f64, max as f64 + 1f64);
 
     for value in values {
         histogram.add(*value as f64).expect("histogram bounds");
